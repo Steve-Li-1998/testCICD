@@ -1,39 +1,11 @@
-name: Build LaTeX PDF
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: danteev/texlive:latest  # 预装 LaTeX 的 Docker 镜像
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4  # 获取仓库代码
-
-      - name: Cache LaTeX packages
-        uses: actions/cache@v4
-        with:
-          path: /usr/share/texlive
-          key: ${{ runner.os }}-texlive-${{ hashFiles('**/*.tex') }}
-          restore-keys: |
-            ${{ runner.os }}-texlive-
-
-      - name: Install LaTeX
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y texlive-latex-base \
-                                  texlive-latex-extra \
-                                  texlive-fonts-recommended \
-                                  texlive-fonts-extra \
-                                  texlive-xetex \
-                                  latexmk \
-                                  python3-pygments  # pygments 用于 minted 宏包
+        uses: actions/checkout@v4
 
       - name: Compile LaTeX to PDF
         run: |
