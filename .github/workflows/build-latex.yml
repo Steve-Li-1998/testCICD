@@ -2,9 +2,9 @@ name: "Build PDF"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   build:
@@ -15,9 +15,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Build PDF
-        run: latexmk -pdf -file-line-error -interaction=nonstopmode -synctex=1 -output-format=pdf -output-directory=./output -shell-escape -f ./src/main.tex.tex
+        run: latexmk -pdf -file-line-error -interaction=nonstopmode -synctex=1 -output-format=pdf -output-directory=./output -shell-escape -f ./src/main.tex
       - name: Upload PDF
         uses: actions/upload-artifact@v3
         with:
-          name: thesis.pdf
-          path: ./thesis.pdf
+          name: main.pdf
+          path: ./output/main.pdf
