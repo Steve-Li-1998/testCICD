@@ -15,18 +15,47 @@ jobs:
             ~/texlive
             /opt/texlive
           key: ubuntu-texlive-full-2023
+          restore-keys: |
+            ubuntu-texlive-full-2023
 
-      - name: Install TeX Live
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y perl wget
+
+      - name: Install TeX Live (Full)
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          sudo apt-get install -y perl
-          wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+          wget https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
           tar -xzf install-tl-unx.tar.gz
-          cd install-tl-*
-          echo "selected_scheme scheme-full" > profile
-          echo "TEXDIR ~/texlive/2023" >> profile
+          
+          echo "解压目录结构："
+          ls -l
+          
+          INSTALL_DIR=$(find . -maxdepth 1 -type d -name "install-tl-*" -print -quit)
+          echo "进入安装目录：$INSTALL_DIR"
+          cd "$INSTALL_DIR"
+          
+          echo "当前路径："
+          pwd
+          
+          ./install-tl --version
+          
+          cat << EOF > profile
+          selected_scheme scheme-full
+          TEXDIR ~/texlive/2023
+          tlpdbopt_autobackup 0
+          tlpdbopt_install_docfiles 0
+          tlpdbopt_install_srcfiles 0
+          EOF
+          
           ./install-tl -profile profile
           echo ~/texlive/2023/bin/x86_64-linux >> $GITHUB_PATH
+
+      - name: Verify Installation
+        run: |
+          which pdflatex
+          pdflatex --version
 
       - name: Compile Document
         run: |
