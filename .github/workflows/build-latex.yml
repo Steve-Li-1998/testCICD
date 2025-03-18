@@ -1,67 +1,46 @@
 name: Build LaTeX PDF
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Cache TeX Live
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4  # 获取仓库代码
+
+      - name: Cache LaTeX packages
         uses: actions/cache@v4
         with:
-          path: |
-            ~/texlive
-            /opt/texlive
-          key: ubuntu-texlive-full-2023
+          path: /usr/share/texlive
+          key: ${{ runner.os }}-texlive-${{ hashFiles('**/*.tex') }}
           restore-keys: |
-            ubuntu-texlive-full-2023
+            ${{ runner.os }}-texlive-
 
-      - name: Install Dependencies
+      - name: Install LaTeX
         run: |
           sudo apt-get update
-          sudo apt-get install -y perl wget
+          sudo apt-get install -y texlive-latex-base \
+                                  texlive-latex-extra \
+                                  texlive-fonts-recommended \
+                                  texlive-fonts-extra \
+                                  texlive-xetex \
+                                  latexmk \
+                                  python3-pygments  # pygments 用于 minted 宏包
 
-      - name: Install TeX Live (Full)
-        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile LaTeX to PDF
         run: |
-          wget https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
-          tar -xzf install-tl-unx.tar.gz
-          
-          echo "解压目录结构："
-          ls -l
-          
-          INSTALL_DIR=$(find . -maxdepth 1 -type d -name "install-tl-*" -print -quit)
-          echo "进入安装目录：$INSTALL_DIR"
-          cd "$INSTALL_DIR"
-          
-          echo "当前路径："
-          pwd
-          
-          ./install-tl --version
-          
-          cat << EOF > profile
-          selected_scheme scheme-full
-          TEXDIR ~/texlive/2023
-          tlpdbopt_autobackup 0
-          tlpdbopt_install_docfiles 0
-          tlpdbopt_install_srcfiles 0
-          EOF
-          
-          ./install-tl -profile profile
-          echo ~/texlive/2023/bin/x86_64-linux >> $GITHUB_PATH
+          latexmk -pdf -shell-escape -interaction=nonstopmode -halt-on-error main.tex
 
-      - name: Verify Installation
-        run: |
-          which pdflatex
-          pdflatex --version
-
-      - name: Compile Document
-        run: |
-          latexmk -pdf -shell-escape main.tex
-
-      - uses: actions/upload-artifact@v4
+      - name: Upload PDF as Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: manuscript
+          name: compiled-pdf
           path: main.pdf
