@@ -1,0 +1,38 @@
+name: Build LaTeX PDF
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache TeX Live
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/texlive
+            /opt/texlive
+          key: ubuntu-texlive-full-2023
+
+      - name: Install TeX Live
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install -y perl
+          wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+          tar -xzf install-tl-unx.tar.gz
+          cd install-tl-*
+          echo "selected_scheme scheme-full" > profile
+          echo "TEXDIR ~/texlive/2023" >> profile
+          ./install-tl -profile profile
+          echo ~/texlive/2023/bin/x86_64-linux >> $GITHUB_PATH
+
+      - name: Compile Document
+        run: |
+          latexmk -pdf -shell-escape main.tex
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manuscript
+          path: main.pdf
