@@ -12,11 +12,11 @@ jobs:
     container:
       image: ghcr.io/moderncv/debian-texlive-docker:main
     steps:
-      - name: Install Python & Pygments
-        run: |
-          apt-get update
-          apt-get install -y python3 python3-pip
-          pip3 install pygments
+#      - name: Install Python & Pygments
+#        run: |
+#          apt-get update
+#          apt-get install -y python3 python3-pip
+#          pip3 install pygments
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build PDF
@@ -26,3 +26,13 @@ jobs:
         with:
           name: main.pdf
           path: ./output/main.pdf
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest PDF Build
+          files: ./output/main.pdf
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
