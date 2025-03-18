@@ -1,4 +1,4 @@
-name: Build LaTeX PDF
+name: LaTeX Build
 
 on: [push, pull_request]
 
@@ -14,54 +14,62 @@ jobs:
           path: |
             ~/texlive
             /opt/texlive
-          key: ubuntu-texlive-full-2023-${{ hashFiles('**/*.tex') }}
+          key: texlive-${{ runner.os }}-2025-full
           restore-keys: |
-            ubuntu-texlive-full-2023-
+            texlive-${{ runner.os }}-2025-
 
-      - name: Install Dependencies
+      - name: Setup Env
         run: |
           sudo apt-get update
-          sudo apt-get install -y perl wget
+          sudo apt-get install -y \
+            perl \
+            fontconfig \
+            libfontconfig1-dev \
+            ghostscript
 
-      - name: Download TeX Live
+      - name: Download Installer
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          wget https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+          wget -q https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
           tar -xzf install-tl-unx.tar.gz
-          cd $(find . -maxdepth 1 -type d -name "install-tl-*" -print -quit)
 
       - name: Install TeX Live
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cd $(find . -maxdepth 1 -type d -name "install-tl-*" -print -quit)
           
-          mkdir -p ~/texlive/2023
+          # 预创建所有目录
+          mkdir -p ~/texlive/2023/{texmf-config,texmf-var,texmf-dist}
+          mkdir -p ~/texlive/texmf-local
           
-          cat << EOF > profile
+          # 生成强化配置
+          cat << 'EOF' > profile
           selected_scheme scheme-full
           TEXDIR ~/texlive/2023
-          TEXMFSYSVAR ~/texlive/2023/texmf-var
-          TEXMFSYSCONFIG ~/texlive/2023/texmf-config
-          TEXMFVAR ~/texlive/2023/texmf-var
           TEXMFCONFIG ~/texlive/2023/texmf-config
           TEXMFHOME ~/texlive/texmf-local
+          TEXMFLOCAL ~/texlive/texmf-local
+          TEXMFSYSCONFIG ~/texlive/2023/texmf-config
+          TEXMFSYSVAR ~/texlive/2023/texmf-var
+          TEXMFVAR ~/texlive/2023/texmf-var
           tlpdbopt_autobackup 0
           tlpdbopt_install_docfiles 0
           tlpdbopt_install_srcfiles 0
+          tlpdbopt_sys_bin /dev/null
+          tlpdbopt_sys_man /dev/null
+          tlpdbopt_sys_info /dev/null
           EOF
           
-          ./install-tl -profile profile -portable
-          echo ~/texlive/2023/bin/x86_64-linux >> $GITHUB_PATH
+          # 执行安装
+          export TEXLIVE_INSTALL_PREFIX=$HOME/texlive
+          ./install-tl -profile profile -portable -no-path-check
+          
+          # 添加路径
+          echo "$HOME/texlive/2023/bin/x86_64-linux" >> $GITHUB_PATH
 
-      - name: Verify Paths
+      - name: Build Document
         run: |
-          echo "PATH: $PATH"
-          which pdflatex
-          pdflatex --version
-
-      - name: Compile Document
-        run: |
-          latexmk -pdf -shell-escape main.tex
+          latexmk -pdf -shell-escape -interaction=nonstopmode main.tex
 
       - uses: actions/upload-artifact@v4
         with:
