@@ -1,18 +1,69 @@
+name: Build LaTeX PDF
+
+on: [push, pull_request]
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: danteev/texlive:latest  # 预装 LaTeX 的 Docker 镜像
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Compile LaTeX to PDF
-        run: |
-          latexmk -pdf -shell-escape -interaction=nonstopmode -halt-on-error main.tex
-
-      - name: Upload PDF as Artifact
-        uses: actions/upload-artifact@v4
+      - name: Cache TeX Live
+        uses: actions/cache@v4
         with:
-          name: compiled-pdf
+          path: |
+            ~/texlive
+            /opt/texlive
+          key: ubuntu-texlive-full-2023-${{ hashFiles('**/*.tex') }}
+          restore-keys: |
+            ubuntu-texlive-full-2023-
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y perl wget
+
+      - name: Download TeX Live
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          wget https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+          tar -xzf install-tl-unx.tar.gz
+          cd $(find . -maxdepth 1 -type d -name "install-tl-*" -print -quit)
+
+      - name: Install TeX Live
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          cd $(find . -maxdepth 1 -type d -name "install-tl-*" -print -quit)
+          
+          mkdir -p ~/texlive/2023
+          
+          cat << EOF > profile
+          selected_scheme scheme-full
+          TEXDIR ~/texlive/2023
+          TEXMFSYSVAR ~/texlive/2023/texmf-var
+          TEXMFSYSCONFIG ~/texlive/2023/texmf-config
+          TEXMFVAR ~/texlive/2023/texmf-var
+          TEXMFCONFIG ~/texlive/2023/texmf-config
+          TEXMFHOME ~/texlive/texmf-local
+          tlpdbopt_autobackup 0
+          tlpdbopt_install_docfiles 0
+          tlpdbopt_install_srcfiles 0
+          EOF
+          
+          ./install-tl -profile profile -portable
+          echo ~/texlive/2023/bin/x86_64-linux >> $GITHUB_PATH
+
+      - name: Verify Paths
+        run: |
+          echo "PATH: $PATH"
+          which pdflatex
+          pdflatex --version
+
+      - name: Compile Document
+        run: |
+          latexmk -pdf -shell-escape main.tex
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manuscript
           path: main.pdf
