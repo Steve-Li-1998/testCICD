@@ -1,77 +1,23 @@
-name: LaTeX Build
+name: "Build PDF"
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/moderncv/debian-texlive-docker:main
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache TeX Live
-        uses: actions/cache@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Build PDF
+        run: latexmk -pdf -file-line-error -interaction=nonstopmode -synctex=1 -output-format=pdf -output-directory=./output -shell-escape -f ./src/main.tex.tex
+      - name: Upload PDF
+        uses: actions/upload-artifact@v3
         with:
-          path: |
-            ~/texlive
-            /opt/texlive
-          key: texlive-${{ runner.os }}-2025-full
-          restore-keys: |
-            texlive-${{ runner.os }}-2025-
-
-      - name: Setup Env
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            perl \
-            fontconfig \
-            libfontconfig1-dev \
-            ghostscript
-
-      - name: Download Installer
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          wget -q https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
-          tar -xzf install-tl-unx.tar.gz
-
-      - name: Install TeX Live
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          cd $(find . -maxdepth 1 -type d -name "install-tl-*" -print -quit)
-          
-          # 预创建所有目录
-          mkdir -p ~/texlive/2023/{texmf-config,texmf-var,texmf-dist}
-          mkdir -p ~/texlive/texmf-local
-          
-          # 生成强化配置
-          cat << 'EOF' > profile
-          selected_scheme scheme-full
-          TEXDIR ~/texlive/2023
-          TEXMFCONFIG ~/texlive/2023/texmf-config
-          TEXMFHOME ~/texlive/texmf-local
-          TEXMFLOCAL ~/texlive/texmf-local
-          TEXMFSYSCONFIG ~/texlive/2023/texmf-config
-          TEXMFSYSVAR ~/texlive/2023/texmf-var
-          TEXMFVAR ~/texlive/2023/texmf-var
-          tlpdbopt_autobackup 0
-          tlpdbopt_install_docfiles 0
-          tlpdbopt_install_srcfiles 0
-          tlpdbopt_sys_bin /dev/null
-          tlpdbopt_sys_man /dev/null
-          tlpdbopt_sys_info /dev/null
-          EOF
-          
-          # 执行安装
-          export TEXLIVE_INSTALL_PREFIX=$HOME/texlive
-          ./install-tl -profile profile -portable -no-path-check
-          
-          # 添加路径
-          echo "$HOME/texlive/2023/bin/x86_64-linux" >> $GITHUB_PATH
-
-      - name: Build Document
-        run: |
-          latexmk -pdf -shell-escape -interaction=nonstopmode main.tex
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: manuscript
-          path: main.pdf
+          name: thesis.pdf
+          path: ./thesis.pdf
