@@ -6,11 +6,21 @@
 
 % Packages
 \usepackage{amsmath}
+\usepackage{minted}
 
 % Document
 \begin{document}
 
+    \begin{minted}{C++}
+#include<iostream>
 
+using namespace std;
+
+int main(){
+    cout << "Hello" << endl;
+    return 0;
+}
+    \end{minted}
     TEST\cite{TEST}
     \bibliography{main}
     \bibliographystyle{plain}
